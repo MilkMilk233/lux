@@ -1,3 +1,93 @@
+# CSC4303 Feature devs
+
+## Env:
+Linux ubuntu 20.04
+## 安装
+1. 装go version go1.22.2 linux/amd64 
+```
+sudo wget https://go.dev/dl/go1.22.2.linux-amd64.tar.gz
+sudo tar xfz go1.22.2.linux-amd64.tar.gz -C /usr/local
+cd ~
+sudo vim .bashrc
+--Adding
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/gowork
+export GOBIN=$GOPATH/bin
+export PATH=$GOPATH:$GOBIN:$GOROOT/bin:$PATH
+--at the end
+# check by
+go version
+```
+
+2. 装ffmpeg  
+sudo apt install ffmpeg
+3. 装lux release版  
+go install github.com/iawia002/lux@latest
+## Benchmark sample
+```
+lux "https://www.bilibili.com/video/BV1ZH4y1K7Jd/" "https://www.bilibili.com/video/BV1FM4m1d7YR/"
+```
+
+## 项目结构
+```
+.
+├── CONTRIBUTING.md
+├── Cask.toml
+├── LICENSE
+├── README.md
+├── app
+│   ├── app.go
+│   └── register.go
+├── codecov.yml
+├── config
+│   └── config.go
+├── downloader
+│   ├── downloader.go
+│   ├── downloader_test.go
+│   ├── types.go
+│   └── utils.go
+├── extractors # 各网站的提取模块
+│   └── ...
+├── go.mod
+├── go.sum
+├── main.go
+├── parser
+│   ├── parser.go
+│   └── parser_test.go
+├── request
+│   ├── request.go
+│   └── request_test.go
+├── script
+│   ├── generate_github_action_template.js
+│   └── github_action_template.yml
+├── static
+│   └── jetbrains-variant-3.svg
+├── test
+│   └── utils.go
+└── utils
+    ├── download.go
+    ├── download_test.go
+    ├── ffmpeg.go
+    ├── pool.go
+    ├── pool_test.go
+    ├── utils.go
+    └── utils_test.go
+```
+
+## 改进目标:
+1. 多个视频同时下载时，采用并行下载的方式，缩减总下载时长
+    > 现状：
+
+
+## Commit History
+- 24/4/16 将项目中依赖的package位置都改为本地
+  
+
+  
+
+**The following is the original descriptions of the repository:*
+
+
 <h1 align="center">Lux</h1>
 
 <p align="center"><i>Let there be Lux!</i></p>
