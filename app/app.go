@@ -248,16 +248,13 @@ func New() *cli.App {
 			})
 
 			var isErr bool
-			for _, videoURL := range args {
-				if err := download(c, videoURL); err != nil {
-					fmt.Fprintf(
-						color.Output,
-						"Downloading %s error:\n",
-						color.CyanString("%s", videoURL),
-					)
-					fmt.Printf("%+v\n", err)
-					isErr = true
-				}
+			if err := download(c, args); err != nil {
+				fmt.Fprintf(
+					color.Output,
+					"Downloading failed, force quit.\n",
+				)
+				fmt.Printf("%+v\n", err)
+				isErr = true
 			}
 			if isErr {
 				return cli.Exit("", 1)
@@ -271,34 +268,39 @@ func New() *cli.App {
 	return app
 }
 
-func download(c *cli.Context, videoURL string) error {
-	data, err := extractors.Extract(videoURL, extractors.Options{
-		Playlist:         c.Bool("playlist"),
-		Items:            c.String("items"),
-		ItemStart:        int(c.Uint("start")),
-		ItemEnd:          int(c.Uint("end")),
-		ThreadNumber:     int(c.Uint("thread")),
-		EpisodeTitleOnly: c.Bool("episode-title-only"),
-		Cookie:           c.String("cookie"),
-		YoukuCcode:       c.String("youku-ccode"),
-		YoukuCkey:        c.String("youku-ckey"),
-		YoukuPassword:    c.String("youku-password"),
-	})
-	if err != nil {
-		// if this error occurs, it means that an error occurred before actually starting to extract data
-		// (there is an error in the preparation step), and the data list is empty.
-		return err
-	}
-
-	if c.Bool("json") {
-		e := json.NewEncoder(os.Stdout)
-		e.SetIndent("", "\t")
-		e.SetEscapeHTML(false)
-		if err := e.Encode(data); err != nil {
+func download(c *cli.Context, args []string) error {
+	var full_data []*extractors.Data
+	var err error
+	for _, videoURL := range args {
+		data, err := extractors.Extract(videoURL, extractors.Options{
+			Playlist:         c.Bool("playlist"),
+			Items:            c.String("items"),
+			ItemStart:        int(c.Uint("start")),
+			ItemEnd:          int(c.Uint("end")),
+			ThreadNumber:     int(c.Uint("thread")),
+			EpisodeTitleOnly: c.Bool("episode-title-only"),
+			Cookie:           c.String("cookie"),
+			YoukuCcode:       c.String("youku-ccode"),
+			YoukuCkey:        c.String("youku-ckey"),
+			YoukuPassword:    c.String("youku-password"),
+		})
+		if err != nil {
+			// if this error occurs, it means that an error occurred before actually starting to extract data
+			// (there is an error in the preparation step), and the data list is empty.
 			return err
 		}
 
-		return nil
+		if c.Bool("json") {
+			e := json.NewEncoder(os.Stdout)
+			e.SetIndent("", "\t")
+			e.SetEscapeHTML(false)
+			if err := e.Encode(data); err != nil {
+				return err
+			}
+
+			return nil
+		}
+		full_data = append(full_data, data...)
 	}
 
 	defaultDownloader := downloader.New(downloader.Options{
@@ -321,7 +323,7 @@ func download(c *cli.Context, videoURL string) error {
 		Aria2Addr:      c.String("aria2-addr"),
 	})
 	errors := make([]error, 0)
-	for _, item := range data {
+	for _, item := range full_data {
 		if item.Err != nil {
 			// if this error occurs, the preparation step is normal, but the data extraction is wrong.
 			// the data is an empty struct.
