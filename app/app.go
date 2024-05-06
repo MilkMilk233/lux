@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
@@ -303,37 +304,47 @@ func download(c *cli.Context, args []string) error {
 		full_data = append(full_data, data...)
 	}
 
-	defaultDownloader := downloader.New(downloader.Options{
-		Silent:         c.Bool("silent"),
-		InfoOnly:       c.Bool("info"),
-		Stream:         c.String("stream-format"),
-		AudioOnly:      c.Bool("audio-only"),
-		Refer:          c.String("refer"),
-		OutputPath:     c.String("output-path"),
-		OutputName:     c.String("output-name"),
-		FileNameLength: int(c.Uint("file-name-length")),
-		Caption:        c.Bool("caption"),
-		MultiThread:    c.Bool("multi-thread"),
-		ThreadNumber:   int(c.Uint("thread")),
-		RetryTimes:     int(c.Uint("retry")),
-		ChunkSizeMB:    int(c.Uint("chunk-size")),
-		UseAria2RPC:    c.Bool("aria2"),
-		Aria2Token:     c.String("aria2-token"),
-		Aria2Method:    c.String("aria2-method"),
-		Aria2Addr:      c.String("aria2-addr"),
-	})
+	var defaultDownloader *downloader.Downloader
 	errors := make([]error, 0)
+	wgp := utils.NewWaitGroupPool(int(c.Uint("thread")))
+	lock := sync.Mutex{}
 	for _, item := range full_data {
+		defaultDownloader = downloader.New(downloader.Options{
+			Silent:         c.Bool("silent"),
+			InfoOnly:       c.Bool("info"),
+			Stream:         c.String("stream-format"),
+			AudioOnly:      c.Bool("audio-only"),
+			Refer:          c.String("refer"),
+			OutputPath:     c.String("output-path"),
+			OutputName:     c.String("output-name"),
+			FileNameLength: int(c.Uint("file-name-length")),
+			Caption:        c.Bool("caption"),
+			MultiThread:    c.Bool("multi-thread"),
+			ThreadNumber:   int(c.Uint("thread")),
+			RetryTimes:     int(c.Uint("retry")),
+			ChunkSizeMB:    int(c.Uint("chunk-size")),
+			UseAria2RPC:    c.Bool("aria2"),
+			Aria2Token:     c.String("aria2-token"),
+			Aria2Method:    c.String("aria2-method"),
+			Aria2Addr:      c.String("aria2-addr"),
+		})
 		if item.Err != nil {
 			// if this error occurs, the preparation step is normal, but the data extraction is wrong.
 			// the data is an empty struct.
 			errors = append(errors, item.Err)
 			continue
 		}
-		if err = defaultDownloader.Download(item); err != nil {
-			errors = append(errors, err)
-		}
+		wgp.Add()
+		go func(item *extractors.Data, defaultDownloader *downloader.Downloader) {
+			defer wgp.Done()
+			if err = defaultDownloader.Download(item, &lock); err != nil {
+				lock.Lock()
+				errors = append(errors, err)
+				lock.Unlock()
+			}
+		}(item, defaultDownloader)
 	}
+	wgp.Wait()
 	if len(errors) != 0 {
 		return errors[0]
 	}

@@ -547,7 +547,7 @@ func (downloader *Downloader) aria2(title string, stream *extractors.Stream) err
 }
 
 // Download download urls
-func (downloader *Downloader) Download(data *extractors.Data) error {
+func (downloader *Downloader) Download(data *extractors.Data, lock *sync.Mutex) error {
 	if len(data.Streams) == 0 {
 		return errors.Errorf("no streams in title %s", data.Title)
 	}
@@ -594,7 +594,9 @@ func (downloader *Downloader) Download(data *extractors.Data) error {
 	}
 
 	if !downloader.option.Silent {
+		lock.Lock()
 		printStreamInfo(data, stream)
+		lock.Unlock()
 	}
 
 	// download caption
@@ -629,7 +631,8 @@ func (downloader *Downloader) Download(data *extractors.Data) error {
 	}
 
 	downloader.bar = progressBar(stream.Size)
-	if !downloader.option.Silent {
+	// Hide the bar
+	if downloader.option.Silent {
 		downloader.bar.Start()
 	}
 	if len(stream.Parts) == 1 {
@@ -651,7 +654,7 @@ func (downloader *Downloader) Download(data *extractors.Data) error {
 	wgp := utils.NewWaitGroupPool(downloader.option.ThreadNumber)
 	// multiple fragments
 	errs := make([]error, 0)
-	lock := sync.Mutex{}
+	err_lock := sync.Mutex{}
 	parts := make([]string, len(stream.Parts))
 	for index, part := range stream.Parts {
 		if len(errs) > 0 {
@@ -675,9 +678,9 @@ func (downloader *Downloader) Download(data *extractors.Data) error {
 				err = downloader.save(part, data.URL, fileName)
 			}
 			if err != nil {
-				lock.Lock()
+				err_lock.Lock()
 				errs = append(errs, err)
-				lock.Unlock()
+				err_lock.Unlock()
 			}
 		}(part, partFileName)
 	}

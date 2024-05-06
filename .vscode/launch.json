@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceRoot}",
-            "args": ["https://www.bilibili.com/video/BV1ZH4y1K7Jd/","https://www.bilibili.com/video/BV1FM4m1d7YR/"],
+            "args": ["-p","https://www.bilibili.com/bangumi/play/ep198061"],
             "postDebugTask": "Cleaning"
         }
     ]
