@@ -20,7 +20,6 @@ func main() {
 	case "-1":
 		// 执行与"-1"相关的操作
 		urls := os.Args[1:]
-		fmt.Println(urls) // 添加这行来打印urls
 		if err := app.New().Run(urls); err != nil {
 			fmt.Fprintf(
 				color.Output,
@@ -32,7 +31,6 @@ func main() {
 	case "-2":
 		// 执行与"-2"相关的操作
 		urls := os.Args[1:]
-		fmt.Println(urls) // 添加这行来打印urls
 		if err := app.New().Run(urls); err != nil {
 			fmt.Fprintf(
 				color.Output,
