@@ -41,6 +41,13 @@ func main() {
 		}
 	case "-3":
 		// 执行与"-3"相关的操作 优先级下载
+		// num, err := strconv.Atoi(os.Args[2])
+		// if err != nil {
+		// 	fmt.Println("Invalid num:", os.Args[2])
+		// 	return
+		// }
+		// urls := os.Args[3 : 3+num]
+		// priorities := os.Args[3+num:]
 	default:
 		fmt.Println("Invalid flag:", flag)
 	}
