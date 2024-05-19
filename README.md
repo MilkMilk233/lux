@@ -74,9 +74,26 @@ lux "https://www.bilibili.com/video/BV1ZH4y1K7Jd/" "https://www.bilibili.com/vid
     └── utils_test.go
 ```
 
+## 示例输入输出
+```sh
+$ go run main.go -1 "https://www.bilibili.com/video/BV1ZH4y1K7Jd/" "https://www.bilibili.com/video/BV1FM4m1d7YR/"
+```
+![1](https://github.com/cuhksz-csc4303-24s/project-report-and-source-code-yigudove/assets/109584096/919cff43-dab2-445f-967c-4c00cdafe308)
+
+```sh
+$ go run main.go -2 "https://www.bilibili.com/video/BV1ZH4y1K7Jd/" "https://www.bilibili.com/video/BV1FM4m1d7YR/"
+```
+![2](https://github.com/cuhksz-csc4303-24s/project-report-and-source-code-yigudove/assets/109584096/5a90564c-659e-4e74-b66d-b4fff8520962)
+
+```sh
+$ go run main.go -3 -i -hp "1:2;2:5" "https://www.bilibili.com/video/BV1ZH4y1K7Jd/" "https://www.bilibili.com/video/BV1FM4m1d7YR/"
+```
+![3](https://github.com/cuhksz-csc4303-24s/project-report-and-source-code-yigudove/assets/109584096/7f87e987-d743-4fec-abc7-d4c1f2b4368b)
+
+
+
 ## 改进目标:
 1. 多个视频同时下载时，采用并行下载的方式，缩减总下载时长
-    > 现状：
 
 
 ## Commit History
@@ -484,6 +501,7 @@ $ lux -i ep198381 av21877586
      Size:            51.88 MiB (54403767 Bytes)
      # download with: lux -f default "URL"
 ```
+
 
 ### Use specified Referrer
 
