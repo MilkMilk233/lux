@@ -1,11 +1,11 @@
 package app
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -48,6 +48,11 @@ func New() *cli.App {
 				Name:    "debug",
 				Aliases: []string{"d"},
 				Usage:   "Debug mode",
+			},
+			&cli.StringFlag{
+				Name:    "has-priority",
+				Aliases: []string{"hp"},
+				Usage:   "build priority map",
 			},
 			&cli.BoolFlag{
 				Name:    "silent",
@@ -270,10 +275,41 @@ func New() *cli.App {
 }
 
 func download(c *cli.Context, args []string) error {
-	var full_data []*extractors.Data
+	type prioritizedData struct {
+		Data     *extractors.Data
+		Priority int
+	}
+
+	var prioritizedTasks []prioritizedData
 	var err error
-	for _, videoURL := range args {
-		data, err := extractors.Extract(videoURL, extractors.Options{
+	priorityMap := make(map[int]int)
+	priority_map_string := c.String("hp")
+	if priority_map_string != "" {
+		pairs := strings.Split(priority_map_string, ";")
+		for _, item := range pairs {
+			pair := strings.Split(item, ":")
+			if len(pair) != 2 {
+				return fmt.Errorf("invalid priority map")
+			}
+			num, err := strconv.Atoi(pair[0])
+			if err != nil {
+				return fmt.Errorf("invalid priority map")
+			}
+			priority, err := strconv.Atoi(pair[1])
+			if err != nil {
+				return fmt.Errorf("invalid priority map")
+			}
+			priorityMap[num] = priority
+		}
+
+	}
+	// 解析每个视频链接及其优先级
+
+	for i, urlsWithPriority := range args[:] {
+		url := urlsWithPriority
+		priority := priorityMap[i+1]
+
+		data, err := extractors.Extract(url, extractors.Options{
 			Playlist:         c.Bool("playlist"),
 			Items:            c.String("items"),
 			ItemStart:        int(c.Uint("start")),
@@ -286,30 +322,23 @@ func download(c *cli.Context, args []string) error {
 			YoukuPassword:    c.String("youku-password"),
 		})
 		if err != nil {
-			// if this error occurs, it means that an error occurred before actually starting to extract data
-			// (there is an error in the preparation step), and the data list is empty.
 			return err
 		}
 
-		if c.Bool("json") {
-			e := json.NewEncoder(os.Stdout)
-			e.SetIndent("", "\t")
-			e.SetEscapeHTML(false)
-			if err := e.Encode(data); err != nil {
-				return err
-			}
-
-			return nil
-		}
-		full_data = append(full_data, data...)
+		prioritizedTasks = append(prioritizedTasks, prioritizedData{Data: data[0], Priority: priority})
 	}
 
-	var defaultDownloader *downloader.Downloader
-	errors := make([]error, 0)
+	// 按优先级对任务进行排序，优先级高的先下载
+	sort.Slice(prioritizedTasks, func(i, j int) bool {
+		return prioritizedTasks[i].Priority > prioritizedTasks[j].Priority
+	})
+
+	// 下载处理
+	var errors []error
 	wgp := utils.NewWaitGroupPool(int(c.Uint("thread")))
 	lock := sync.Mutex{}
-	for _, item := range full_data {
-		defaultDownloader = downloader.New(downloader.Options{
+	for _, item := range prioritizedTasks {
+		defaultDownloader := downloader.New(downloader.Options{
 			Silent:         c.Bool("silent"),
 			InfoOnly:       c.Bool("info"),
 			Stream:         c.String("stream-format"),
@@ -328,24 +357,19 @@ func download(c *cli.Context, args []string) error {
 			Aria2Method:    c.String("aria2-method"),
 			Aria2Addr:      c.String("aria2-addr"),
 		})
-		if item.Err != nil {
-			// if this error occurs, the preparation step is normal, but the data extraction is wrong.
-			// the data is an empty struct.
-			errors = append(errors, item.Err)
-			continue
-		}
 		wgp.Add()
-		go func(item *extractors.Data, defaultDownloader *downloader.Downloader) {
+		go func(data *extractors.Data, downloader *downloader.Downloader) {
 			defer wgp.Done()
-			if err = defaultDownloader.Download(item, &lock); err != nil {
+			if err = downloader.Download(data, &lock); err != nil {
 				lock.Lock()
 				errors = append(errors, err)
 				lock.Unlock()
 			}
-		}(item, defaultDownloader)
+		}(item.Data, defaultDownloader)
 	}
 	wgp.Wait()
-	if len(errors) != 0 {
+
+	if len(errors) > 0 {
 		return errors[0]
 	}
 	return nil
