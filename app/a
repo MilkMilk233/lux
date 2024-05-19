@@ -293,8 +293,8 @@ func download(c *cli.Context, args []string) error {
 		url := urlsWithPriority
 		parts := strings.Split(urlsWithPriority, ";")
 		if len(parts) == 2 {
-			priority, err = strconv.Atoi(parts[1])
-			url = parts[0]
+			priority, err = strconv.Atoi(parts[0])
+			url = parts[1]
 		}
 		if err != nil {
 			return fmt.Errorf("invalid priority value for URL %s: %v", parts[0], err)
